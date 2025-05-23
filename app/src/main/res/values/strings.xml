@@ -1,3 +1,10 @@
 <resources>
-    <string name="app_name">CBBI</string>
+    <string name="app_name" translatable="false">CBBI</string>
+    <string name="display_name" translatable="false">CBBI</string>
+    <string name="status_loading">Loading…</string>
+    <string name="status_updating">Updating…</string>
+    <string name="status_not_available">N/A</string>
+    <string name="status_error_prefix">Error:</string>
+    <string name="status_failure">Failed</string>
+    <string name="button_refresh">REFRESH</string>
 </resources>
