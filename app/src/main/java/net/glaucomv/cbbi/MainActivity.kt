@@ -8,7 +8,7 @@ import android.graphics.Typeface
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log // Import para Log
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,10 +20,10 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.google.firebase.messaging.FirebaseMessaging // Import para FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await // Import para await em Tasks
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -41,18 +41,16 @@ class MainActivity : AppCompatActivity() {
     private val cbbiApiUrl = "https://colintalkscrypto.com/cbbi/data/latest.json"
     private val prefsName = "CbbiAppPrefs"
     private val keyLastCbbiValue = "lastCbbiValue"
-    private val FCM_TOPIC_ALL_USERS = "all_users" // Define o nome do tópico
 
     // --- LAUNCHER PARA PEDIR A PERMISSÃO DE NOTIFICAÇÃO ---
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            Log.d("MainActivityFCM", "@string/notif_aproved")
-            // Se a permissão for concedida, podemos tentar (re)inscrever no tópico
+            Log.d(TAG_FCM, getString(R.string.log_notification_permission_granted))
             subscribeToTopic()
         } else {
-            Log.d("MainActivityFCM", "@string/notif_denied")
+            Log.d(TAG_FCM, getString(R.string.log_notification_permission_denied))
         }
     }
 
@@ -71,28 +69,25 @@ class MainActivity : AppCompatActivity() {
 
         displayLastSavedCbbiValue()
         scheduleCbbiWorker()
-        askNotificationPermission() // Pede permissão de notificação
+        askNotificationPermission()
 
-        // Inscreve no tópico FCM após pedir permissão (se já concedida)
-        // ou quando a permissão for concedida.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 subscribeToTopic()
             }
         } else {
-            // Para versões anteriores ao Android 13, a permissão é implícita
             subscribeToTopic()
         }
     }
 
     // --- FUNÇÃO PARA INSCREVER NO TÓPICO FCM ---
     private fun subscribeToTopic() {
-        lifecycleScope.launch { // Use lifecycleScope para coroutines na Activity
+        lifecycleScope.launch {
             try {
                 FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC_ALL_USERS).await()
-                Log.d("MainActivityFCM", "Inscrito no tópico: $FCM_TOPIC_ALL_USERS com sucesso!")
+                Log.d(TAG_FCM, getString(R.string.log_subscribed_to_topic_success, FCM_TOPIC_ALL_USERS))
             } catch (e: Exception) {
-                Log.e("MainActivityFCM", "Falha ao inscrever no tópico $FCM_TOPIC_ALL_USERS", e)
+                Log.e(TAG_FCM, getString(R.string.log_subscribe_to_topic_failed, FCM_TOPIC_ALL_USERS), e)
             }
         }
     }
@@ -190,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                         setCbbiTextColor(cbbiValueString)
                     }
                 } else {
-                    val errorMsg = getString(R.string.status_error_prefix) + " ${connection.responseCode}"
+                    val errorMsg = getString(R.string.status_error_with_code, connection.responseCode.toString())
                     withContext(Dispatchers.Main) {
                         cbbiValueTextView.text = errorMsg
                         setCbbiTextColor(null)
@@ -209,7 +204,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- COMPANION OBJECT ---
     companion object {
         const val CBBI_WORKER_TAG = "CbbiPeriodicWorker"
+        const val FCM_TOPIC_ALL_USERS = "all_users"
+        const val TAG_FCM = "MainActivityFCM"
     }
 }

@@ -1,12 +1,16 @@
 <resources>
     <string name="app_name" translatable="false">CBBI</string>
-    <string name="display_name" translatable="false">CBBI</string>
+    <string name="display_name">CBBI</string>
     <string name="status_loading">Loading…</string>
     <string name="status_updating">Updating…</string>
     <string name="status_not_available">N/A</string>
     <string name="status_error_prefix">Error:</string>
     <string name="status_failure">Fail</string>
     <string name="button_refresh">REFRESH</string>
-    <string name="notif_aproved">Notification permission GRANTED</string>
-    <string name="notif_denied">Notification permission DENIED</string>
+    <string name="log_notification_permission_granted">Notification permission GRANTED</string>
+    <string name="log_notification_permission_denied">Notification permission DENIED</string>
+    <string name="toast_notification_permission_denied">Notifications will not work without permission.</string>
+    <string name="log_subscribed_to_topic_success">Subscribed to topic: %1$s successfully!</string>
+    <string name="log_subscribe_to_topic_failed">Failed to subscribe to topic %1$s</string>
+    <string name="status_error_with_code">Error: %1$s</string>
 </resources>
