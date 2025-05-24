@@ -5,6 +5,8 @@
     <string name="status_updating">Updating…</string>
     <string name="status_not_available">N/A</string>
     <string name="status_error_prefix">Error:</string>
-    <string name="status_failure">Failed</string>
+    <string name="status_failure">Fail</string>
     <string name="button_refresh">REFRESH</string>
+    <string name="notif_aproved">Notification permission GRANTED</string>
+    <string name="notif_denied">Notification permission DENIED</string>
 </resources>

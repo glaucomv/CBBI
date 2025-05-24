@@ -1,31 +1,39 @@
 package net.glaucomv.cbbi
 
+import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log // Import para Log
 import android.widget.Button
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.firebase.messaging.FirebaseMessaging // Import para FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await // Import para await em Tasks
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
-import androidx.core.content.edit
 
 class MainActivity : AppCompatActivity() {
 
+    // --- VARIÁVEIS DA CLASSE ---
     private lateinit var cbbiValueTextView: TextView
     private lateinit var refreshButton: Button
     private lateinit var sharedPreferences: SharedPreferences
@@ -33,11 +41,22 @@ class MainActivity : AppCompatActivity() {
     private val cbbiApiUrl = "https://colintalkscrypto.com/cbbi/data/latest.json"
     private val prefsName = "CbbiAppPrefs"
     private val keyLastCbbiValue = "lastCbbiValue"
+    private val FCM_TOPIC_ALL_USERS = "all_users" // Define o nome do tópico
 
-    companion object {
-        const val CBBI_WORKER_TAG = "CbbiPeriodicWorker"
+    // --- LAUNCHER PARA PEDIR A PERMISSÃO DE NOTIFICAÇÃO ---
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("MainActivityFCM", "@string/notif_aproved")
+            // Se a permissão for concedida, podemos tentar (re)inscrever no tópico
+            subscribeToTopic()
+        } else {
+            Log.d("MainActivityFCM", "@string/notif_denied")
+        }
     }
 
+    // --- MÉTODO ONCREATE ---
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -52,6 +71,30 @@ class MainActivity : AppCompatActivity() {
 
         displayLastSavedCbbiValue()
         scheduleCbbiWorker()
+        askNotificationPermission() // Pede permissão de notificação
+
+        // Inscreve no tópico FCM após pedir permissão (se já concedida)
+        // ou quando a permissão for concedida.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                subscribeToTopic()
+            }
+        } else {
+            // Para versões anteriores ao Android 13, a permissão é implícita
+            subscribeToTopic()
+        }
+    }
+
+    // --- FUNÇÃO PARA INSCREVER NO TÓPICO FCM ---
+    private fun subscribeToTopic() {
+        lifecycleScope.launch { // Use lifecycleScope para coroutines na Activity
+            try {
+                FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC_ALL_USERS).await()
+                Log.d("MainActivityFCM", "Inscrito no tópico: $FCM_TOPIC_ALL_USERS com sucesso!")
+            } catch (e: Exception) {
+                Log.e("MainActivityFCM", "Falha ao inscrever no tópico $FCM_TOPIC_ALL_USERS", e)
+            }
+        }
     }
 
     override fun onResume() {
@@ -59,17 +102,25 @@ class MainActivity : AppCompatActivity() {
         displayLastSavedCbbiValue()
     }
 
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     private fun setCbbiTextColor(valueString: String?) {
         val numericValue = valueString?.toDoubleOrNull()
-
         if (numericValue == null) {
             cbbiValueTextView.setTextColor(ContextCompat.getColor(this, R.color.cbbi_default_text_color))
             cbbiValueTextView.typeface = Typeface.DEFAULT
             return
         }
-
         when {
-            numericValue >= 75.0 -> {
+            numericValue >= 85.0 -> {
                 cbbiValueTextView.setTextColor(ContextCompat.getColor(this, R.color.cbbi_high_red))
                 cbbiValueTextView.typeface = Typeface.DEFAULT_BOLD
             }
@@ -85,7 +136,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun displayLastSavedCbbiValue() {
-        // Usa getString para pegar a string traduzível, e a string "N/A" como fallback se necessário
         val lastValueString = sharedPreferences.getString(keyLastCbbiValue, getString(R.string.status_loading))
         cbbiValueTextView.text = lastValueString
         setCbbiTextColor(lastValueString)
@@ -109,17 +159,15 @@ class MainActivity : AppCompatActivity() {
     private fun fetchAndDisplayData() {
         lifecycleScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) {
-                cbbiValueTextView.text = getString(R.string.status_updating) // Usa string do recurso
-                setCbbiTextColor(getString(R.string.status_updating)) // Passa a string do recurso
+                cbbiValueTextView.text = getString(R.string.status_updating)
+                setCbbiTextColor(null)
             }
-
             var connection: HttpURLConnection? = null
             try {
                 val url = URL(cbbiApiUrl)
                 connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
-
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     val response = connection.inputStream.bufferedReader().use { it.readText() }
                     val mainJsonObject = JSONObject(response)
@@ -131,36 +179,37 @@ class MainActivity : AppCompatActivity() {
                             val decimalValue = confidenceObject.getDouble(latestTimestamp.toString())
                             (decimalValue * 100).roundToInt().toString()
                         } else {
-                            getString(R.string.status_not_available) // Usa string do recurso
+                            getString(R.string.status_not_available)
                         }
                     } else {
-                        getString(R.string.status_not_available) // Usa string do recurso
+                        getString(R.string.status_not_available)
                     }
-
                     sharedPreferences.edit { putString(keyLastCbbiValue, cbbiValueString) }
-
                     withContext(Dispatchers.Main) {
                         cbbiValueTextView.text = cbbiValueString
                         setCbbiTextColor(cbbiValueString)
                     }
                 } else {
-                    // Para mensagens de erro que incluem dados variáveis (como o código de erro)
-                    val errorMsg = getString(R.string.status_error_prefix) + connection.responseCode
+                    val errorMsg = getString(R.string.status_error_prefix) + " ${connection.responseCode}"
                     withContext(Dispatchers.Main) {
                         cbbiValueTextView.text = errorMsg
-                        setCbbiTextColor(errorMsg) // Passa a string completa
+                        setCbbiTextColor(null)
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                val failureMsg = getString(R.string.status_failure) // Usa string do recurso
+                val failureMsg = getString(R.string.status_failure)
                 withContext(Dispatchers.Main) {
                     cbbiValueTextView.text = failureMsg
-                    setCbbiTextColor(failureMsg) // Passa a string do recurso
+                    setCbbiTextColor(null)
                 }
             } finally {
                 connection?.disconnect()
             }
         }
+    }
+
+    companion object {
+        const val CBBI_WORKER_TAG = "CbbiPeriodicWorker"
     }
 }
