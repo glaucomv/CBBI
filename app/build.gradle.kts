@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -37,6 +38,14 @@ android {
 }
 
 dependencies {
+    // Firebase - Importa a Bill of Materials (BoM) para gerir as versões
+    implementation(platform(libs.firebase.bom))
+    // Adiciona as dependências para os produtos Firebase que quer usar
+    // As versões são geridas pela BoM, por isso não são especificadas aqui.
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
     implementation(libs.androidx.work.runtime.ktx)
 
     implementation(libs.androidx.core.ktx)
@@ -44,7 +53,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.work.runtime.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
