@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="display_name">CBBI</string>
+    <string name="status_loading">Carregando…</string>
+    <string name="status_updating">Atualizando…</string>
+    <string name="status_not_available">N/A</string>
+    <string name="status_error_prefix">Erro:</string>
+    <string name="status_failure">Falhou</string>
+    <string name="button_refresh">ATUALIZAR</string>
+    <string name="log_notification_permission_granted">Permissão de notificação CONCEDIDA</string>
+    <string name="log_notification_permission_denied">Permissão de notificação NEGADA</string>
+    <string name="toast_notification_permission_denied">As notificações não funcionarão sem permissão.</string>
+    <string name="log_subscribed_to_topic_success">Inscrito no tópico: %1$s com sucesso!</string>
+    <string name="log_subscribe_to_topic_failed">Falha ao inscrever no tópico %1$s</string>
+    <string name="status_error_with_code">Erro: %1$s</string>
+</resources>

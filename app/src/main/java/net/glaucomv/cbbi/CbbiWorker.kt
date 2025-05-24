@@ -1,7 +1,6 @@
-package net.glaucomv.cbbi // Certifique-se que o pacote está correto
+package net.glaucomv.cbbi
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +11,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.roundToInt
+import androidx.core.content.edit
 
 class CbbiWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
@@ -54,7 +54,7 @@ class CbbiWorker(appContext: Context, workerParams: WorkerParameters) :
                     }
 
                     if (cbbiValueString != null) {
-                        sharedPreferences.edit().putString(keyLastCbbiValue, cbbiValueString).apply()
+                        sharedPreferences.edit { putString(keyLastCbbiValue, cbbiValueString) }
                         Result.success()
                     } else {
                         // Se não conseguiu obter o valor, pode tentar novamente mais tarde ou falhar
